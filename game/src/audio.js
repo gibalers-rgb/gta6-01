@@ -1,11 +1,19 @@
-// Sound, synthesised with WebAudio only — no audio files, no network. Engine hum,
-// sirens, gunshots, pickups and mission jingles, all from oscillators and noise.
-export function createAudio() {
+// Sound, synthesised with WebAudio only — no audio files, no network. Engine
+// hum, sirens, a horn, gunshots, pickups and job jingles come from one small
+// tone helper, and a procedural music loop — a bassline with chord stabs —
+// keeps the city moving.
+export function makeAudio() {
   let ctx = null;
   let engineOsc = null;
   let engineGain = null;
-  let sirenTimer = 0;
+  let sirenIn = 0;
   let muted = false;
+  let musicIn = 0;
+  let musicAt = 0;
+  // A minor-key loop: bass notes with a stab chord every four steps.
+  const BASS = [55, 0, 65.41, 0, 73.42, 0, 82.41, 98, 0, 82.41, 73.42, 0, 65.41, 0, 55, 0];
+  const STAB = [220, 261.63, 329.63];
+  const STEP_SECS = 0.32;
 
   function ensure() {
     if (ctx) return true;
@@ -35,21 +43,23 @@ export function createAudio() {
     if (ensure() && ctx.state === 'suspended') ctx.resume();
   }
 
-  function blip(freq, dur, type, vol) {
+  /** One enveloped oscillator note. */
+  function tone(freq, dur, type, vol, when) {
     if (!ensure() || muted) return;
+    const t0 = ctx.currentTime + (when || 0);
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
     osc.type = type || 'square';
     osc.frequency.value = freq;
-    gain.gain.setValueAtTime(vol || 0.12, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + dur);
+    gain.gain.setValueAtTime(vol || 0.12, t0);
+    gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
     osc.connect(gain);
     gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + dur);
+    osc.start(t0);
+    osc.stop(t0 + dur);
   }
 
-  function noise(dur, vol, lowpass) {
+  function hiss(dur, vol, cutoff) {
     if (!ensure() || muted) return;
     const len = Math.floor(ctx.sampleRate * dur);
     const buffer = ctx.createBuffer(1, len, ctx.sampleRate);
@@ -59,7 +69,7 @@ export function createAudio() {
     src.buffer = buffer;
     const filter = ctx.createBiquadFilter();
     filter.type = 'lowpass';
-    filter.frequency.value = lowpass || 1200;
+    filter.frequency.value = cutoff || 1200;
     const gain = ctx.createGain();
     gain.gain.value = vol || 0.2;
     src.connect(filter);
@@ -83,35 +93,54 @@ export function createAudio() {
     },
     siren(dt, wanted) {
       if (!ensure() || muted || wanted === 0) return;
-      sirenTimer -= dt;
-      if (sirenTimer <= 0) {
-        sirenTimer = 0.55;
-        blip(660, 0.5, 'sine', 0.05);
-        setTimeout(() => blip(520, 0.5, 'sine', 0.05), 260);
+      sirenIn -= dt;
+      if (sirenIn <= 0) {
+        sirenIn = 0.55;
+        tone(660, 0.5, 'sine', 0.05);
+        tone(520, 0.5, 'sine', 0.05, 0.26);
       }
     },
+    /** One tick of the music loop: bass note, hat, and a stab each bar. */
+    music(dt, playing) {
+      if (!ensure() || muted || !playing) return;
+      musicIn -= dt;
+      if (musicIn > 0) return;
+      musicIn += STEP_SECS;
+      const bass = BASS[musicAt % BASS.length];
+      if (bass) tone(bass, STEP_SECS * 0.9, 'triangle', 0.07);
+      if (musicAt % 2 === 1) hiss(0.03, 0.03, 6000);
+      if (musicAt % 16 === 8) {
+        for (const f of STAB) tone(f, 0.5, 'sine', 0.03);
+      }
+      musicAt += 1;
+    },
+    /** Two-tone car horn (H while driving). */
+    honk() {
+      tone(370, 0.28, 'square', 0.09);
+      tone(466, 0.28, 'square', 0.07);
+    },
     shoot() {
-      noise(0.12, 0.25, 900);
+      hiss(0.12, 0.25, 900);
     },
     punch() {
-      noise(0.08, 0.15, 500);
+      hiss(0.08, 0.15, 500);
     },
     pickup() {
-      blip(880, 0.12, 'square', 0.1);
-      setTimeout(() => blip(1318, 0.16, 'square', 0.1), 90);
+      tone(880, 0.12, 'square', 0.1);
+      tone(1318, 0.16, 'square', 0.1, 0.09);
     },
     cash() {
-      blip(1046, 0.1, 'triangle', 0.12);
-      setTimeout(() => blip(1568, 0.18, 'triangle', 0.12), 100);
+      tone(1046, 0.1, 'triangle', 0.12);
+      tone(1568, 0.18, 'triangle', 0.12, 0.1);
     },
-    missionPass() {
-      [523, 659, 784, 1046].forEach((f, i) => setTimeout(() => blip(f, 0.22, 'triangle', 0.14), i * 130));
+    jobDone() {
+      [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.22, 'triangle', 0.14, i * 0.13));
     },
-    missionFail() {
-      [392, 330, 262].forEach((f, i) => setTimeout(() => blip(f, 0.25, 'sawtooth', 0.1), i * 160));
+    jobFailed() {
+      [392, 330, 262].forEach((f, i) => tone(f, 0.25, 'sawtooth', 0.1, i * 0.16));
     },
     busted() {
-      blip(220, 0.5, 'sawtooth', 0.12);
+      tone(220, 0.5, 'sawtooth', 0.12);
     },
   };
 }

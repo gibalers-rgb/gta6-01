@@ -1,17 +1,18 @@
-// Save and load: cash, story progress, hidden packages and best earnings, kept in
-// localStorage (this browser only). A missing or corrupt save is just a fresh start.
-import { SAVE_KEY } from './config.js';
+// Save and load, versioned so an old save never confuses a new build.
+// Cash, story progress, hidden packages, best earnings — localStorage only,
+// this browser only. A missing or corrupt save is just a fresh start.
+import { CFG } from './tuning.js';
 
-export function loadSave() {
+export function readSave() {
   try {
-    const raw = window.localStorage.getItem(SAVE_KEY);
+    const raw = window.localStorage.getItem(CFG.saveKey);
     if (!raw) return null;
     const save = JSON.parse(raw);
-    if (typeof save !== 'object' || save === null) return null;
+    if (typeof save !== 'object' || save === null || save.v !== 3) return null;
     return {
       cash: typeof save.cash === 'number' ? save.cash : 0,
-      missionIndex: typeof save.missionIndex === 'number' ? save.missionIndex : 0,
-      packages: Array.isArray(save.packages) ? save.packages : [],
+      job: typeof save.job === 'number' ? save.job : 0,
+      pkgs: Array.isArray(save.pkgs) ? save.pkgs : [],
       earned: typeof save.earned === 'number' ? save.earned : 0,
     };
   } catch {
@@ -19,19 +20,20 @@ export function loadSave() {
   }
 }
 
-export function writeSave(state) {
+export function storeSave(state) {
   try {
-    const taken = [];
+    const pkgs = [];
     state.city.packages.forEach((p, i) => {
-      if (p.taken) taken.push(i);
+      if (p.taken) pkgs.push(i);
     });
-    window.localStorage.setItem(SAVE_KEY, JSON.stringify({
+    window.localStorage.setItem(CFG.saveKey, JSON.stringify({
+      v: 3,
       cash: state.cash,
-      missionIndex: state.missions.state.index,
-      packages: taken,
+      job: state.jobs.state.index,
+      pkgs,
       earned: state.earned,
     }));
   } catch {
-    // Storage can be off (private windows): the game still plays, it just forgets.
+    // Storage can be off (private windows): the game still plays, it forgets.
   }
 }

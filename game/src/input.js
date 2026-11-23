@@ -1,106 +1,114 @@
-// Keyboard and pointer input. Held keys give movement and driving; one-shot presses
-// (start, pause, enter a car, punch, interact) are queued as bit flags and taken once
-// by the loop, so a press between two frames is never lost and never counted twice.
-export const ACTION_CONFIRM = 1;
-export const ACTION_PAUSE = 2;
-export const ACTION_ENTER = 4;
-export const ACTION_PUNCH = 8;
-export const ACTION_INTERACT = 16;
+// Keyboard and pointer input, driven by a table: each physical key maps to a
+// named action, and the game asks about actions, never about key codes.
+// One-shot actions (confirm, pause, enter, talk, horn) are latched and taken
+// once, so a press between two frames is never lost and never counted twice.
+export const ACT_CONFIRM = 'confirm';
+export const ACT_PAUSE = 'pause';
+export const ACT_ENTER = 'enter';
+export const ACT_TALK = 'talk';
+export const ACT_HORN = 'horn';
 
-const UP = new Set(['ArrowUp', 'KeyW']);
-const DOWN = new Set(['ArrowDown', 'KeyS']);
-const LEFT = new Set(['ArrowLeft', 'KeyA']);
-const RIGHT = new Set(['ArrowRight', 'KeyD']);
-const RUN = new Set(['ShiftLeft', 'ShiftRight']);
-const CONFIRM = new Set(['Space', 'Enter']);
-const PAUSE = new Set(['KeyP', 'Escape']);
-const ENTER = new Set(['KeyE', 'KeyF']);
-const INTERACT = new Set(['KeyQ']);
+const KEYMAP = {
+  ArrowUp: 'up', KeyW: 'up',
+  ArrowDown: 'down', KeyS: 'down',
+  ArrowLeft: 'left', KeyA: 'left',
+  ArrowRight: 'right', KeyD: 'right',
+  ShiftLeft: 'sprint', ShiftRight: 'sprint',
+  Space: 'confirm', Enter: 'confirm',
+  KeyP: 'pause', Escape: 'pause',
+  KeyE: 'enter', KeyF: 'enter',
+  KeyQ: 'talk',
+  KeyH: 'horn',
+};
 
-export function createInput(target) {
-  const keys = new Set();
-  let actions = 0;
-  let mouse = { x: 0, y: 0, down: false };
-  let mouseClicked = false;
+const ONE_SHOT = new Set(['confirm', 'pause', 'enter', 'talk', 'horn']);
 
-  function press(code) {
-    if (CONFIRM.has(code)) actions |= ACTION_CONFIRM;
-    else if (PAUSE.has(code)) actions |= ACTION_PAUSE;
-    else if (ENTER.has(code)) actions |= ACTION_ENTER;
-    else if (INTERACT.has(code)) actions |= ACTION_INTERACT;
+export function makeInput(target) {
+  const down = new Set();
+  const latched = new Set();
+  const pointer = { x: 0, y: 0, isDown: false };
+  let clicked = false;
+  let spaceHeld = false; // Space doubles as the handbrake while driving
+
+  function keyOn(code) {
+    if (code === 'Space') spaceHeld = true;
+    const action = KEYMAP[code];
+    if (!action) return;
+    down.add(action);
+    if (ONE_SHOT.has(action)) latched.add(action);
   }
 
   window.addEventListener('keydown', (event) => {
     if (event.repeat) return;
-    keys.add(event.code);
-    press(event.code);
-    if (UP.has(event.code) || DOWN.has(event.code) || LEFT.has(event.code) || RIGHT.has(event.code)) {
+    keyOn(event.code);
+    const action = KEYMAP[event.code];
+    if (action === 'up' || action === 'down' || action === 'left' || action === 'right') {
       event.preventDefault();
     }
   });
   window.addEventListener('keyup', (event) => {
-    keys.delete(event.code);
+    if (event.code === 'Space') spaceHeld = false;
+    const action = KEYMAP[event.code];
+    if (action) down.delete(action);
   });
   window.addEventListener('blur', () => {
-    keys.clear();
-    mouse.down = false;
+    down.clear();
+    pointer.isDown = false;
   });
   target.addEventListener('pointermove', (event) => {
-    mouse.x = event.clientX;
-    mouse.y = event.clientY;
+    pointer.x = event.clientX;
+    pointer.y = event.clientY;
   });
   target.addEventListener('pointerdown', (event) => {
-    mouse.down = true;
-    mouse.x = event.clientX;
-    mouse.y = event.clientY;
-    mouseClicked = true;
-    actions |= ACTION_CONFIRM;
+    pointer.isDown = true;
+    pointer.x = event.clientX;
+    pointer.y = event.clientY;
+    clicked = true;
+    latched.add('confirm');
   });
   window.addEventListener('pointerup', () => {
-    mouse.down = false;
+    pointer.isDown = false;
   });
 
-  const has = (set) => {
-    for (const code of set) if (keys.has(code)) return true;
-    return false;
-  };
-
   return {
-    /** -1/0/1 for each axis: up/down and left/right. */
-    move() {
+    /** Movement vector, each axis -1/0/1. */
+    moveVec() {
       return {
-        x: (has(RIGHT) ? 1 : 0) - (has(LEFT) ? 1 : 0),
-        y: (has(DOWN) ? 1 : 0) - (has(UP) ? 1 : 0),
+        x: (down.has('right') ? 1 : 0) - (down.has('left') ? 1 : 0),
+        y: (down.has('down') ? 1 : 0) - (down.has('up') ? 1 : 0),
       };
     },
-    running() {
-      return has(RUN);
+    sprinting() {
+      return down.has('sprint');
     },
-    /** -1 for brake/reverse, 1 for throttle, 0 for neither. */
+    /** -1 brake/reverse, 1 throttle, 0 neither. */
     throttle() {
-      return (has(UP) ? 1 : 0) - (has(DOWN) ? 1 : 0);
+      return (down.has('up') ? 1 : 0) - (down.has('down') ? 1 : 0);
     },
-    /** -1 for left, 1 for right. */
+    /** -1 left, 1 right. */
     steer() {
-      return (has(RIGHT) ? 1 : 0) - (has(LEFT) ? 1 : 0);
+      return (down.has('right') ? 1 : 0) - (down.has('left') ? 1 : 0);
     },
     handbrake() {
-      return has(new Set(['Space']));
+      return spaceHeld;
     },
-    mouse() {
-      return mouse;
+    pointer() {
+      return pointer;
     },
-    /** True once after a click (mouse aim / shoot on foot). */
+    /** True once after a click (aim / shoot on foot). */
     takeClick() {
-      const clicked = mouseClicked;
-      mouseClicked = false;
-      return clicked;
+      const was = clicked;
+      clicked = false;
+      return was;
     },
-    /** The one-shot presses since the last call, as ACTION_* flags. */
+    /** The latched one-shot actions since the last call. */
     takeActions() {
-      const taken = actions;
-      actions = 0;
+      const taken = new Set(latched);
+      latched.clear();
       return taken;
+    },
+    hasAction(name) {
+      return down.has(name);
     },
   };
 }
