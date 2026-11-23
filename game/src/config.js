@@ -1,82 +1,81 @@
-// Tuning and palette for Leonida Bay, a sun-soaked fictional open-world city.
-// All units are world pixels; one world step is 1/60 s.
-export const STEP = 1 / 60;
-export const WORLD = { width: 3600, height: 2700 };
-export const ROAD_WIDTH = 96;
+// Solmar Heat — tuning constants.
+// One place for every number that shapes how the city and the chase feel,
+// so balancing the game means editing this file, not hunting through logic.
 
-// Vertical and horizontal road centrelines. Blocks between them hold buildings.
-export const ROADS_X = [300, 700, 1100, 1500, 1900, 2300, 2700];
-export const ROADS_Y = [250, 650, 1050, 1450, 1850, 2250];
+export const TILE = 64; // pixels per city tile
+export const COLS = 38; // city width in tiles
+export const ROWS = 28; // city height in tiles
+export const WORLD_W = COLS * TILE; // 2432 px
+export const WORLD_H = ROWS * TILE; // 1792 px
 
-export const BEACH_X = 3050; // sand starts here
-export const OCEAN_X = 3380; // water starts here
+export const VIEW_W = 960; // canvas width
+export const VIEW_H = 600; // canvas height
 
-export const PLAYER = {
-  radius: 13,
-  walkSpeed: 170,
-  runSpeed: 270,
-  health: 100,
-  punchDamage: 30,
-  punchRange: 36,
-  punchCooldown: 0.38,
-};
+// City layout: roads sit on every 5th tile line; the south rows are beach.
+export const ROAD_EVERY = 5;
+export const BEACH_START_ROW = 26; // rows 26-27 are sand, row 27 is the sea edge
 
-export const CAR = {
-  length: 56,
-  width: 27,
-  accel: 430,
-  brake: 720,
-  reverseAccel: 260,
-  maxSpeed: 540,
-  maxReverse: 170,
-  turnRate: 2.6,
-  health: 100,
-};
+// On-foot movement (pixels per second).
+export const WALK_SPEED = 175;
+export const RUN_SPEED = 265;
 
-export const WANTED = {
-  maxStars: 5,
-  decayDelay: 8, // seconds with no police near before stars start falling
-  decayInterval: 4,
-  policeCars: [0, 2, 3, 4, 5, 6], // police cars on the map per star level
-  policeFoot: [0, 0, 2, 3, 4, 6], // foot cops per star level
-};
+// Driving (pixels per second, radians per second).
+export const CAR_ACCEL = 520;
+export const CAR_BRAKE = 760;
+export const CAR_REVERSE_MAX = 150;
+export const CAR_MAX_SPEED = 430;
+export const CAR_TURN_RATE = 2.9;
+export const CAR_DRAG = 0.55; // per second, eases off the throttle
+export const TRAFFIC_SPEED = 120;
+export const POLICE_SPEED = 470; // slightly faster than the player's top speed
 
-export const DAY_LENGTH = 240; // seconds for a full day cycle
+// Health and damage.
+export const MAX_HEALTH = 100;
+export const CRASH_DAMAGE = 9; // hard hit against a building
+export const RAM_DAMAGE = 7; // a police ram
+export const PED_HIT_DAMAGE = 0; // hitting a pedestrian costs heat, not health
+export const HEALTH_REGEN = 4; // per second after 6 s without damage
 
+// Wanted level.
+export const MAX_WANTED = 5;
+export const WANTED_DECAY_QUIET = 10; // seconds without a crime before stars drop
+export const WANTED_DECAY_STEP = 8; // seconds per star lost while quiet
+export const WITNESS_RANGE = 330; // a steal seen inside this range raises heat
+export const POLICE_SIGHT_RANGE = 430; // police notice crimes inside this range
+export const SPRAY_SHOP_COST = 150; // clears the whole wanted level
+
+// Police.
+export const MAX_POLICE = 3; // active chasers at once
+export const POLICE_SPAWN_INTERVAL = 2.5; // seconds between spawns while wanted
+export const BUST_GRAB_RANGE = 34; // a cop on foot-grab distance
+
+// Missions.
+export const GETAWAY_TIME = 75; // seconds for the final mission
+export const CASH_BAG_COUNT = 5;
+export const CASH_BAG_VALUE = 60;
+
+// Population.
+export const TRAFFIC_COUNT = 14;
+export const PARKED_COUNT = 10;
+export const PED_COUNT = 22;
+
+// Palette: a sun-soaked coastal city, all original colours.
 export const COLORS = {
-  grass: '#79a854',
-  grassDark: '#6a9a48',
-  park: '#5da24a',
-  sand: '#ecd9a0',
-  ocean: '#2fa8b5',
-  oceanDeep: '#1d7f9e',
-  road: '#33343c',
-  roadEdge: '#26272e',
-  sidewalk: '#b9b3a4',
-  line: '#e8c33c',
-  roofs: ['#e07856', '#f2a541', '#7fb3d5', '#e58aa5', '#8fc1a3', '#d9c27a', '#9b8fd4', '#ef8354'],
-  walls: ['#c96a4a', '#d18a2e', '#6a9cc0', '#c97a95', '#7aa88d', '#bfa85e', '#8478bd', '#d06f42'],
-  palm: '#3f8f4f',
-  neonPink: '#ff2e88',
-  neonCyan: '#22d3ee',
-  neonYellow: '#ffd23e',
+  grass: '#5da24f',
+  sidewalk: '#b8a88f',
+  road: '#33313a',
+  roadLine: '#e8d44f',
+  sand: '#e9c886',
+  sea: '#2f7fb8',
+  seaDeep: '#256b9e',
+  buildingRoof: ['#ff9d76', '#ffd166', '#7ec8e3', '#f78fb3', '#a3e635', '#c084fc'],
+  buildingEdge: '#4a4038',
+  palmTrunk: '#8a6b46',
+  palmLeaf: '#2f9e44',
+  player: '#ffcf3f',
+  cop: '#1c2733',
+  copWhite: '#f2f2f2',
+  cash: '#37d67a',
+  marker: '#ffe14d',
+  hideout: '#b366ff',
 };
-
-export const SAVE_KEY = 'leonida-bay-save-v1';
-
-// Fixed places in the city, by name.
-export const PLACES = {
-  safehouse: { x: 700, y: 650, label: 'Safehouse' },
-  diner: { x: 1500, y: 1050, label: 'Sunset Diner' },
-  beachLot: { x: 3100, y: 1450, label: 'Beach Lot' },
-  garage: { x: 700, y: 2050, label: 'Port Garage' },
-  beach: { x: 3200, y: 1050, label: 'Ocean Beach' },
-  hideout: { x: 1100, y: 1850, label: 'Hideout' },
-  port: { x: 500, y: 2250, label: 'Port of Leonida' },
-  warehouse: { x: 1900, y: 2250, label: 'Warehouse 7' },
-  downtown: { x: 1700, y: 1050, label: 'Downtown' },
-  spray: { x: 2300, y: 650, label: "Pay 'n Spray" },
-  hospital: { x: 1100, y: 250, label: 'Leonida General' },
-};
-
-export const FONT = 'system-ui, -apple-system, "Segoe UI", sans-serif';

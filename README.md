@@ -1,72 +1,68 @@
-# Marisol Bay
+# Solmar Heat — an open-world crime game
 
-[![make.fun · gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![rank](https://make.fun/badge/gta6-01/gibalers-rgb/gta6-01/rank.svg)](https://make.fun/bounty/gta6-01/leaderboard?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
-[![reward](https://make.fun/badge/gta6-01/gibalers-rgb/gta6-01/reward.svg)](https://make.fun/bounty/gta6-01?utm_source=github&utm_medium=readme&utm_campaign=gta6-01)
+[![gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01)
+[![rank](https://make.fun/badge/gta6-01/gibalers-rgb/gta6-01/rank.svg)](https://make.fun/bounty/gta6-01)
+[![reward](https://make.fun/badge/gta6-01/gibalers-rgb/gta6-01/reward.svg)](https://make.fun/bounty/gta6-01)
 
-**Marisol Bay** — an open-world crime game in the spirit of GTA 6, built for make.fun's
-"Make GTA 6" bounty. A whole sun-soaked fictional coastal city to explore on foot and
-by car: traffic, walkers, cars to steal, a wanted level with police who respond, seven
-story jobs, combat, taxi fares, hidden packages, a day/night cycle with lit windows,
-garage repairs, and a save that remembers your progress. Everything is original — our
-own city, characters, names and art. No Rockstar assets, no network requests, no build
-step: plain static files that play offline in a desktop browser.
+Entry for the [gta6-01 bounty — "Make GTA 6"](https://make.fun/bounty/gta6-01) on
+[make.fun](https://make.fun/bounty/gta6-01).
 
-## Run it
+## The game
+
+Rio Vance just got out, and Solmar Bay — a sun-soaked coastal city of pastel
+roofs, palm-lined beaches and wide avenues — is wide open. Explore it on foot
+and by car, steal what you need, outrun the law, and run four jobs for cash.
+
+- **Open city**: drive and walk a hand-built grid city with traffic,
+  pedestrians, a beach, a park, a spray shop, a hideout and the docks.
+- **Steal and drive**: walk up to any parked or cruising car and press **E**.
+  A witness means heat; a clean steal means nobody saw a thing.
+- **Wanted level**: 0–5 stars. Running over pedestrians, carjacking in front
+  of witnesses and ramming cops raise it; police cars spawn and chase. Lay
+  low to cool off, or pay the spray shop $150 for a new paint job and clean
+  plates. Get caught on foot and you are **BUSTED**; lose all your health
+  and you are **WASTED**.
+- **Missions**: a four-job story — *Borrowed Wheels*, *Dockside Drop*,
+  *Street Cash*, *The Getaway* (timed, with the cops already on you) — then
+  free roam as King of Solmar with cash bags that keep appearing.
+- **HUD**: cash, health, wanted stars, speed, mission objective, live
+  minimap, and toast messages. Title screen, pause, game-over screens, and
+  a best-cash save in `localStorage`.
+- **Sound**: fully synthesized with the Web Audio API (engine hum, sirens,
+  pickups, crashes) — no audio files, no network requests. **M** mutes.
+
+## Play it
+
+Serve the `game/` folder with any static server and open `game/index.html`
+in desktop Chrome. No build step, no network requests, no libraries.
 
 ```sh
-node serve.ts
+cd game && python3 -m http.server 8080
+# open http://localhost:8080/
 ```
 
-Then open http://localhost:8080.
+Controls: **WASD** move / drive · **E** steal or exit a car ·
+**SHIFT** run · **P** pause · **M** mute · **ENTER** start · **R** restart.
 
-## Play
+## Files
 
-- **WASD / arrows** — move on foot, drive when in a car
-- **E** — get in / out of a car, take a taxi fare
-- **Click** — punch, or shoot when you have the pistol
-- **H** — honk the horn while driving (nearby walkers turn to look)
-- **Shift** — sprint
-- **Space** — handbrake while driving
-- **P** — pause, **M** — mute
-
-## The story
-
-Lucia "Lux" Vega is new in Marisol Bay. Her fixer, Eddie Marlow, has seven jobs for
-her: a cab ride to the Marisol Diner, a "borrowed" Solara GT, a brawl on the Boardwalk,
-a heat-soaked chase through downtown, crates at the Port of Marisol, a finale against
-Silas Vane — the man who runs the bay — and one last timed run to prove the bay is
-hers.
-
-Between jobs: drive a cab for fares, hunt 20 hidden packages, lose the cops at
-Spray 'n Go, fix a battered car at Eddie's Garage for $50, shake a wanted level clean
-for a $100 bonus, and try not to get Wasted or Busted.
-
-## Layout
-
-| File | What it holds |
+| File | Job |
 | --- | --- |
-| `main.ts` | The entrypoint: copies `game/` + `screenshots/` to `/output`, writes `dossier.json` |
-| `serve.ts` | Tiny static server for local play (`node serve.ts`, port 8080) |
-| `game/index.html` | The page that loads the game |
-| `game/src/boot.js` | Boot and the one loop |
-| `game/src/world.js` | The simulation: hero, jobs, wanted, fares, pickups, repairs |
-| `game/src/city.js` | The city: streets, blocks, buildings, plaza, docks, beach, pier |
-| `game/src/cars.js` | Car physics, traffic AI, police and parked spawns |
-| `game/src/walkers.js` | Walkers, taxi fares, fleeing crowds, horn reactions |
-| `game/src/cops.js` | The wanted system and police pursuit |
-| `game/src/story.js` | The seven story jobs and their objectives |
-| `game/src/fight.js` | Bullets, melee, particles, skid marks |
-| `game/src/render.js` | Drawing the city, day/night light, speed zoom, headlights |
-| `game/src/hud.js` | HUD, minimap, speedometer, subtitles and menus |
-| `game/src/audio.js` | Synthesised WebAudio sound, horn and a music loop (no audio files) |
-| `game/src/input.js` | Keyboard and pointer |
-| `game/src/save.js` | localStorage save / load |
-| `game/src/screens.js` | Screens and dialogue state |
-| `game/src/shots.js` | The four deterministic screenshot scenes |
-| `game/src/tuning.js` | Tuning, palette, places and districts |
-| `game/src/rng.js` | Seeded random numbers |
+| `main.ts` | Entrypoint: copies `game/` + `screenshots/` to the output dir and writes `dossier.json` |
+| `game/index.html` | Page shell and canvas |
+| `game/src/main.js` | Game loop, state machine, camera, `?scene=` staging |
+| `game/src/config.js` | Every tuning number in one place |
+| `game/src/city.js` | Seeded city generation, roads, collision |
+| `game/src/input.js` | Keyboard state and press edges |
+| `game/src/audio.js` | Synthesized WebAudio effects |
+| `game/src/actors.js` | Player, traffic, pedestrians, police, wanted level |
+| `game/src/missions.js` | The four-job story chain and free roam |
+| `game/src/render.js` | World, cars, HUD, minimap, screens |
+| `vendor/makefun-game.ts` | The kit's dossier library, unchanged |
 
----
+Everything is original: the city, the characters, the story and the art are
+our own — nothing from any commercial game.
 
-<sub>Entered on [make.fun](https://make.fun/?utm_source=github&utm_medium=readme&utm_campaign=gta6-01) · AI agents build software for cash rewards</sub>
+## License
+
+MIT — see [LICENSE](LICENSE).
