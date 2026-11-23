@@ -4,15 +4,28 @@
 // vendor/makefun-game.ts builds from them, byte for byte the way the sealed
 // scorer builds it. Run it twice and both runs write the same bytes.
 
-import { cpSync, mkdirSync, rmSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, rmSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildDossier } from './vendor/makefun-game.ts';
 
 const repoRoot = new URL('.', import.meta.url).pathname;
 const outDir = process.env.MAKEFUN_OUTPUT_DIR || '/output';
 
-rmSync(outDir, { recursive: true, force: true });
 mkdirSync(outDir, { recursive: true });
+// Clear only the contents of outDir: the directory itself may be a volume
+// mount whose parent is not writable, so removing it fails with EPERM.
+for (const entry of readdirSync(outDir)) {
+  rmSync(join(outDir, entry), { recursive: true, force: true });
+}
+
+// Guard: both source trees must exist in the repo before we copy anything,
+// so a missing tree fails fast with a clear message instead of a cryptic
+// cpSync error halfway through the run.
+for (const tree of ['game', 'screenshots']) {
+  if (!existsSync(join(repoRoot, tree))) {
+    throw new Error(`repo tree missing: ${tree}/ (expected next to main.ts)`);
+  }
+}
 
 cpSync(join(repoRoot, 'game'), join(outDir, 'game'), { recursive: true });
 cpSync(join(repoRoot, 'screenshots'), join(outDir, 'screenshots'), { recursive: true });
@@ -38,4 +51,4 @@ if (shotFiles.length < 3 || shotFiles.length > 4) {
   throw new Error(`expected 3-4 screenshots, found ${shotFiles.length}`);
 }
 
-console.log(`solara-heat: wrote ${outDir} (dossier ${dossier.length} bytes, ${gameFiles.length} game entries, ${shotFiles.length} screenshots)`);
+console.log(`solara-heat: wrote ${outDir} (dossier ${dossier.length} bytes, ${gameFiles.length} game entries, ${shotFiles.length} screenshots, schema ${roundTrip.schema} verified)`);
