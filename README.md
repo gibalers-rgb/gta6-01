@@ -1,68 +1,91 @@
-# Solmar Heat — an open-world crime game
-
-[![gta6-01](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01)
+[![make.fun](https://make.fun/badge/gta6-01.svg)](https://make.fun/bounty/gta6-01)
 [![rank](https://make.fun/badge/gta6-01/gibalers-rgb/gta6-01/rank.svg)](https://make.fun/bounty/gta6-01)
 [![reward](https://make.fun/badge/gta6-01/gibalers-rgb/gta6-01/reward.svg)](https://make.fun/bounty/gta6-01)
 
-Entry for the [gta6-01 bounty — "Make GTA 6"](https://make.fun/bounty/gta6-01) on
-[make.fun](https://make.fun/bounty/gta6-01).
+# Solara Heat — an open-world crime game
 
-## The game
+**Solara Heat** is a complete top-down open-world crime game in the spirit of
+GTA 6, built from scratch for the [Make GTA 6 bounty](https://make.fun/bounty/gta6-01)
+on make.fun. It runs offline in a desktop browser from its own static files —
+no network requests, no libraries, all art drawn in code and all sound
+synthesized with WebAudio.
 
-Rio Vance just got out, and Solmar Bay — a sun-soaked coastal city of pastel
-roofs, palm-lined beaches and wide avenues — is wide open. Explore it on foot
-and by car, steal what you need, outrun the law, and run four jobs for cash.
+You are **Leo Vane**, a wheelman who owes the fixer Kane Duarte two grand.
+Run five story jobs for **Mira Solano**, steal cars, outrun the Solara PD, and
+take the city back — or just cruise Beachfront in a stolen taxi and see how
+long you last at five stars.
 
-- **Open city**: drive and walk a hand-built grid city with traffic,
-  pedestrians, a beach, a park, a spray shop, a hideout and the docks.
-- **Steal and drive**: walk up to any parked or cruising car and press **E**.
-  A witness means heat; a clean steal means nobody saw a thing.
-- **Wanted level**: 0–5 stars. Running over pedestrians, carjacking in front
-  of witnesses and ramming cops raise it; police cars spawn and chase. Lay
-  low to cool off, or pay the spray shop $150 for a new paint job and clean
-  plates. Get caught on foot and you are **BUSTED**; lose all your health
-  and you are **WASTED**.
-- **Missions**: a four-job story — *Borrowed Wheels*, *Dockside Drop*,
-  *Street Cash*, *The Getaway* (timed, with the cops already on you) — then
-  free roam as King of Solmar with cash bags that keep appearing.
-- **HUD**: cash, health, wanted stars, speed, mission objective, live
-  minimap, and toast messages. Title screen, pause, game-over screens, and
-  a best-cash save in `localStorage`.
-- **Sound**: fully synthesized with the Web Audio API (engine hum, sirens,
-  pickups, crashes) — no audio files, no network requests. **M** mutes.
+## Play
 
-## Play it
-
-Serve the `game/` folder with any static server and open `game/index.html`
-in desktop Chrome. No build step, no network requests, no libraries.
+Serve `game/` with any static server and open `game/index.html`:
 
 ```sh
-cd game && python3 -m http.server 8080
-# open http://localhost:8080/
+python3 -m http.server 8080 --directory game
+# open http://localhost:8080
 ```
 
-Controls: **WASD** move / drive · **E** steal or exit a car ·
-**SHIFT** run · **P** pause · **M** mute · **ENTER** start · **R** restart.
+## Controls
 
-## Files
-
-| File | Job |
+| Input | Action |
 | --- | --- |
-| `main.ts` | Entrypoint: copies `game/` + `screenshots/` to the output dir and writes `dossier.json` |
-| `game/index.html` | Page shell and canvas |
-| `game/src/main.js` | Game loop, state machine, camera, `?scene=` staging |
-| `game/src/config.js` | Every tuning number in one place |
-| `game/src/city.js` | Seeded city generation, roads, collision |
-| `game/src/input.js` | Keyboard state and press edges |
-| `game/src/audio.js` | Synthesized WebAudio effects |
-| `game/src/actors.js` | Player, traffic, pedestrians, police, wanted level |
-| `game/src/missions.js` | The four-job story chain and free roam |
-| `game/src/render.js` | World, cars, HUD, minimap, screens |
-| `vendor/makefun-game.ts` | The kit's dossier library, unchanged |
+| WASD / arrows | Move on foot (Shift to sprint) |
+| E | Steal / enter a car, step out |
+| W/S, A/D, Space | Drive, steer, handbrake |
+| Mouse + click | Aim and shoot (R reload, 1/2/3 weapons) |
+| ENTER | Take Mira's next job / advance dialogue |
+| ESC | Pause, save, quit to title |
+| F | Change radio station |
+| M | Toggle music |
 
-Everything is original: the city, the characters, the story and the art are
-our own — nothing from any commercial game.
+## What is in the game
+
+- **A city to explore** — Solara Bay: Old Town, Downtown, The Hills, Marina,
+  Midtown, the Pier 9 docks and a beachfront, with traffic, pedestrians, parks,
+  parking lots and a day/night cycle.
+- **On foot and by car** — steal any traffic car (sedan, taxi, sport, truck,
+  van — even a police cruiser), with arcade handling, crashes, smoke and wrecks.
+- **Wanted level 1–5** — stealing, shooting and killing raise the heat; police
+  cruisers chase and ram, officers on foot try to arrest you, and laying low
+  loses the tail. Busted or wasted costs you cash and a trip to the station
+  or the hospital.
+- **Five story missions** — Borrowed Wheels, Three Drops, Lose the Heat,
+  Dockside Grab, and The Solara Score, with phone dialogue from Mira.
+- **Side work** — taxi fares, 12 hidden cash stashes, health/armor/ammo
+  pickups, an SMG to find.
+- **HUD with minimap** — mission tracker, cash, health/armor, wanted stars,
+  weapon and ammo, speed, clock, district name, and a live minimap with
+  mission, police, fare and stash blips.
+- **Save** — progress autosaves after every mission and on pause; continue
+  from the title screen.
+- **Sound** — synthesized engine hum, sirens, gunfire, jingles and a bass
+  groove; no audio files.
+
+## Structure
+
+```
+game/
+  index.html        page + canvas shell
+  src/
+    main.js         boot, loop, input, save/load, render pass
+    city.js         Solara Bay: roads, blocks, beach, docks, collision
+    vehicles.js     traffic AI + player car physics + car drawing
+    people.js       pedestrians
+    police.js       wanted level, pursuit cars, foot officers, busted/wasted
+    combat.js       weapons, bullets, pickups
+    missions.js     five story jobs + taxi fares
+    hud.js          HUD, minimap, menus, dialogue
+    audio.js        WebAudio synth: SFX + music sequencer
+    fx.js           particles, floating text, screen shake
+    rng.js          seeded random + math helpers
+    shots.js        ?shot= staging for screenshots
+main.ts             entry program: copies game/ + screenshots/ to /output
+                    and writes dossier.json with vendor/makefun-game.ts
+```
+
+Screenshots under `screenshots/` are real renders of this game's own code,
+staged with `?shot=chase|street|docks|sunset`.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](LICENSE). An original game: no Rockstar Games names,
+characters, art, music or assets.

@@ -1,148 +1,116 @@
-// The screenshot scenes behind ?shot=start|chase|mission|night. Each one stages
-// a real game state — a fresh world, a scripted situation, a few seconds of
-// the real rules played forward — so the frame is what playing really looks
-// like, and the same seed always gives the same frame.
-import { CFG, SPOTS } from './tuning.js';
-import { SCR_PLAY, SCR_TITLE } from './screens.js';
+// Screenshot staging: ?shot=chase|street|docks|sunset|title puts the game in
+// a fixed, deterministic scene so a still frame shows the systems at work.
+// This is the game's own code — the same code a player runs — with the
+// camera and the situation chosen by a URL parameter.
 
-const TICK = CFG.tick;
+import { makeCar, giveTrafficRoute } from './vehicles.js';
+import { makePed } from './people.js';
+import { addHeat, spawnCopCar, spawnFootCop } from './police.js';
+import { startMission } from './missions.js';
+import { nearestRoadPoint } from './city.js';
 
-function clampNum(v, lo, hi) {
-  return v < lo ? lo : v > hi ? hi : v;
+function placePlayerInCar(G, x, y, angle, type) {
+  const car = makeCar(G.city, G.rng, {
+    kind: 'player', type, x, y, angle,
+    color: type === 'taxi' ? '#e8c33a' : '#c93a6a',
+  });
+  car.speed = 260;
+  G.cars.push(car);
+  G.player.car = car;
+  G.player.x = x;
+  G.player.y = y;
+  G.player.angle = angle;
 }
 
-/** A scripted driver: full throttle, steering from a function. */
-function autoDriver(steerFn) {
-  return {
-    moveVec: () => ({ x: 0, y: 0 }),
-    sprinting: () => false,
-    throttle: () => 1,
-    steer: steerFn,
-    handbrake: () => false,
-    pointer: () => ({ x: 640, y: 360, isDown: false }),
-    takeClick: () => false,
-  };
-}
-
-function idleDriver() {
-  return {
-    moveVec: () => ({ x: 0, y: 0 }),
-    sprinting: () => false,
-    throttle: () => 0,
-    steer: () => 0,
-    handbrake: () => false,
-    pointer: () => ({ x: 640, y: 360, isDown: false }),
-    takeClick: () => false,
-  };
-}
-
-/** Drive the world forward `seconds` with a scripted driver. `afterTick` runs after each tick. */
-function driveFor(world, seconds, driver, afterTick) {
-  const n = Math.round(seconds / TICK);
-  for (let i = 0; i < n; i += 1) {
-    world.tick(TICK, driver, new Set());
-    if (afterTick) afterTick(world.state);
+function addTrafficAround(G, cx, cy, count) {
+  for (let i = 0; i < count; i++) {
+    const p = nearestRoadPoint(cx + G.rng.range(-420, 420), cy + G.rng.range(-320, 320));
+    const car = makeCar(G.city, G.rng, { kind: 'traffic', x: p.x, y: p.y });
+    giveTrafficRoute(car, G.rng);
+    car.speed = car.ai.cruise;
+    G.cars.push(car);
   }
 }
 
-/** Steer toward a fixed compass heading, as a function of the hero angle. */
-function holdHeading(world, heading) {
-  return () => {
-    const a = world.hero.angle;
-    return clampNum(((heading - a + Math.PI * 3) % (Math.PI * 2)) - Math.PI, -1, 1) * 1.4;
-  };
+function addPedsAround(G, cx, cy, count) {
+  for (let i = 0; i < count; i++) {
+    const p = nearestRoadPoint(cx + G.rng.range(-380, 380), cy + G.rng.range(-280, 280));
+    const ped = makePed(G.city, G.rng, p.x + G.rng.range(-30, 30), p.y + G.rng.range(-30, 30));
+    G.peds.push(ped);
+  }
 }
 
-/**
- * Set `world` to the named scene and return the screen to draw over it.
- * `ui` carries the subtitle the scene shows.
- */
-export function stageShot(name, world, ui) {
-  const state = world.state;
-  world.reset();
+export function applyShot(G, name) {
+  G.shotMode = name;
+  G.state = 'playing';
+  G.player.cash = 1840;
+  G.player.hp = 86;
+  G.player.armor = 40;
+  G.player.weapon = 'pistol';
+  G.player.ammoInMag = 9;
+  G.player.ammoReserve = 48;
+
   if (name === 'chase') {
-    // Sunset getaway downtown: three stars, two cruisers on the tail.
-    state.time = 17.6 * 3600;
-    state.jobs.start(3); // Rush Hour: a chase with three stars
-    const car = state.cars.add(1120, 1080, 0,
-      { name: 'Solara GT', color: '#2ec4b6', top: 565, accel: 480 }, 'parked');
-    car.speed = 380;
-    world.getIn(car);
-    state.wanted = 3;
-    // Cruisers behind the hero on the same street, visibly in pursuit: a
-    // rolling start, so they stay in frame instead of being outrun.
-    const cruiser = { name: 'MPD Interceptor', color: '#14264d', top: 565, accel: 510 };
-    const c1 = state.cars.add(820, 1056, 0, cruiser, 'police');
-    const c2 = state.cars.add(940, 1104, 0, cruiser, 'police');
-    c1.speed = 500;
-    c2.speed = 500;
-    state.cash = 2450;
-    state.earned = 2450;
-    // Keep the getaway lane clear for the whole drive: maintain() spawns fresh
-    // traffic on the hero's street as it goes, and a crossing car at full speed
-    // would wedge the hero and the frame would show a crawl, not a chase.
-    const clearLane = (st) => {
-      for (let i = st.cars.list.length - 1; i >= 0; i -= 1) {
-        const c = st.cars.list[i];
-        if (c !== car && c.kind !== 'police' && c.x > st.hero.x - 100 && c.x < st.hero.x + 900
-          && Math.abs(c.y - st.hero.y) < 90) {
-          st.cars.list.splice(i, 1);
-        }
-      }
-    };
-    ui.say('Eddie: "Three stars and the whole MPD behind us. Don\'t stop."', 30);
-    driveFor(world, 1.8, autoDriver(() => clampNum(-state.hero.angle * 2.2, -1, 1)), clearLane);
-    return { screen: SCR_PLAY };
+    // A three-star pursuit downtown, mission 3 live.
+    G.clockHour = 15.2;
+    G.autoDrive = true;
+    placePlayerInCar(G, 1560, 1000, 0, 'sport');
+    addTrafficAround(G, 1300, 1000, 4);
+    addTrafficAround(G, 1560, 1400, 3);
+    addPedsAround(G, 1560, 1000, 8);
+    startMission(G, 2);
+    G.dialogue = [];
+    spawnCopCar(G); spawnCopCar(G);
+    const c1 = G.cars[G.cars.length - 1];
+    c1.x = 1330; c1.y = 1000; c1.angle = 0; c1.speed = 380;
+    const c2 = G.cars[G.cars.length - 2];
+    c2.x = 1790; c2.y = 1120; c2.angle = Math.PI; c2.speed = 360;
+    G.cam.x = 1560; G.cam.y = 1000;
+    G.feed('Police pursuit — 3 stars', '#ff8a7a');
+  } else if (name === 'street') {
+    // On foot in Old Town, first job offered, traffic and crowds.
+    G.clockHour = 10.4;
+    G.player.x = 760; G.player.y = 640;
+    G.player.angle = Math.PI / 2;
+    addTrafficAround(G, 760, 640, 8);
+    addPedsAround(G, 760, 640, 14);
+    G.progress.missionIndex = 0;
+    G.feed('Mira is calling — press ENTER to take the job', '#ffd23a');
+    G.cam.x = 760; G.cam.y = 640;
+  } else if (name === 'docks') {
+    // The Pier 9 crate job, guards posted, golden hour.
+    G.clockHour = 17.4;
+    G.player.x = 2700; G.player.y = 1560;
+    G.player.angle = 0;
+    G.player.weapon = 'smg';
+    G.player.ammoInMag = 30;
+    startMission(G, 3);
+    G.dialogue = [];
+    spawnFootCop(G, 2760, 1500);
+    spawnFootCop(G, 2760, 1900);
+    addTrafficAround(G, 2900, 1500, 2);
+    G.cam.x = 2700; G.cam.y = 1560;
+  } else if (name === 'sunset') {
+    // A taxi fare along the beachfront at sunset, one star on the tail.
+    G.clockHour = 18.6;
+    G.autoDrive = true;
+    placePlayerInCar(G, 1200, 2100, 0, 'taxi');
+    G.player.car.speed = 300;
+    addTrafficAround(G, 1000, 2100, 3);
+    addTrafficAround(G, 1200, 1800, 2);
+    addPedsAround(G, 1200, 2100, 6);
+    G.fare = { dest: { x: 420, y: 1980, name: 'Beachfront' }, timer: 62, pay: 45 };
+    addHeat(G, 12, '');
+    spawnCopCar(G);
+    const c = G.cars[G.cars.length - 1];
+    c.x = 950; c.y = 2100; c.angle = 0; c.speed = 330;
+    G.cam.x = 1200; G.cam.y = 2100;
   }
-  if (name === 'mission') {
-    // Boardwalk Brawl, on foot with the pistol, the Sharks closing in.
-    state.time = 11 * 3600;
-    state.jobs.start(2);
-    state.jobs.state.step = 1;
-    world.armStep();
-    state.hero.x = SPOTS.boardwalk.x - 160;
-    state.hero.y = SPOTS.boardwalk.y - 110;
-    state.hero.weapon = 'pistol';
-    state.hero.ammo = 24;
-    state.hero.aim = Math.atan2(SPOTS.boardwalk.y - state.hero.y, SPOTS.boardwalk.x - state.hero.x);
-    state.cash = 1830;
-    state.earned = 1830;
-    ui.say('Lux: "The Sharks think the boardwalk is theirs. It\'s ours."', 30);
-    // Run the fight with no heat so no cruisers pile into the scene; the star
-    // is set afterwards, for the HUD.
-    driveFor(world, 3, idleDriver());
-    // Clear any traffic that wandered into the fight, then show the wanted star.
-    for (let i = state.cars.list.length - 1; i >= 0; i -= 1) {
-      const c = state.cars.list[i];
-      if ((c.kind === 'traffic' || c.kind === 'parked') && Math.hypot(c.x - state.hero.x, c.y - state.hero.y) < 340) {
-        state.cars.list.splice(i, 1);
-      }
-    }
-    state.wanted = 1;
-    return { screen: SCR_PLAY };
-  }
-  if (name === 'night') {
-    // Neon downtown at night, two stars, cruising past the towers.
-    state.time = 22 * 3600;
-    state.jobs.state.index = 7; // story done: free-roam tracker line
-    // Start at the south edge of downtown and drive north, so the frame keeps
-    // the towers and their lit windows in view.
-    const car = state.cars.add(1920, 1420, -Math.PI / 2,
-      { name: 'Neon Coupe', color: '#ff2e88', top: 535, accel: 455 }, 'parked');
-    car.speed = 300;
-    world.getIn(car);
-    state.wanted = 2;
-    // One cruiser behind the hero on the same street, in pursuit.
-    state.cars.add(1920, 1800, -Math.PI / 2,
-      { name: 'MPD Interceptor', color: '#14264d', top: 565, accel: 510 }, 'police');
-    state.cash = 3120;
-    state.earned = 3120;
-    ui.say('Downtown Marisol Bay — the city never sleeps, and neither do the cops.', 30);
-    driveFor(world, 1.2, autoDriver(holdHeading(world, -Math.PI / 2)));
-    return { screen: SCR_PLAY };
-  }
-  // start: the title screen over a living morning street.
-  state.time = 10 * 3600;
-  driveFor(world, 5, idleDriver());
-  return { screen: SCR_TITLE };
+  // Settle the world a couple of seconds so traffic spreads out naturally.
+  for (let i = 0; i < 120; i++) G.stepWorld(1 / 60);
+  G.banner = null;
+  G.feedItems = [];
+  if (name === 'chase') G.feed('WANTED ★★★ — lose the cops!', '#ff8a7a');
+  if (name === 'docks') G.feed('Pier 9 — collect the crates', '#ffd23a');
+  if (name === 'sunset') G.feed('Fare to Beachfront — 62s', '#37d67a');
 }
